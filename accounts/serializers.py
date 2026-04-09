@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import User
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.contrib.auth import authenticate
 import uuid
 from verification.models import EmailVerification
 
@@ -22,10 +23,21 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 class CustomLoginSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
-        data = super().validate(attrs)
+
+        user = authenticate(
+            request=self.context.get('request'),
+            email=attrs.get('email'),
+            password=attrs.get('password')
+        )        
+
+        if not user:
+            raise serializers.ValidationError('Invalid credentials.')
         
-        if not self.user.is_verified:
+        if not user.is_verified:
             raise serializers.ValidationError('Email is not verified.')
         
+        self.user = user
+
+        data = super().validate(attrs)       
         return data
     
